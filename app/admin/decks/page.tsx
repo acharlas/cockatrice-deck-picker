@@ -12,6 +12,7 @@ import { Trash2, Edit, Plus, Download, Home } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { ADMIN_SECRET, COLOR_OPTIONS } from "@/lib/constants"
 
 interface Deck {
   id: string
@@ -23,8 +24,6 @@ interface Deck {
   createdAt: string
 }
 
-const ADMIN_SECRET = "deck-master-2024"
-const COLOR_OPTIONS = ["White", "Blue", "Black", "Red", "Green", "Colorless"]
 
 export default function AdminDecks() {
   const searchParams = useSearchParams()

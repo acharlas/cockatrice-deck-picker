@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { PLAYERS } from "@/lib/players"
+import { COLOR_OPTIONS } from "@/lib/constants"
 import { Shuffle, Home, Copy } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -34,7 +35,6 @@ interface PlayerPreferences {
   }
 }
 
-const COLOR_OPTIONS = ["White", "Blue", "Black", "Red", "Green", "Colorless"]
 
 export default function AssignPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>(PLAYERS)
