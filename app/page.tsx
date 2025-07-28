@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Shuffle, History, Settings, Lock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { ADMIN_SECRET } from "@/lib/constants"
 
-const ADMIN_PASSWORD = "deck-master-2024"
+const ADMIN_PASSWORD = ADMIN_SECRET
 
 export default function HomePage() {
   const [password, setPassword] = useState("")
