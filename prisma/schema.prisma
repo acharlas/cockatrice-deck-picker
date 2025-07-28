@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Deck {
+  id        String   @id @default(cuid())
+  name      String
+  bracket   Int
+  colors    String   // JSON string array
+  deckList  String   @default("") // Plain text deck list
+  createdAt DateTime @default(now())
+}
+
+model AssignmentHistory {
+  id         String   @id @default(cuid())
+  sessionId  String
+  gameId     String   // New field to group assignments by game
+  playerName String
+  deckId     String
+  deckName   String
+  assignedAt DateTime @default(now())
+}
+
+model UsedDeck {
+  id        String @id @default(cuid())
+  sessionId String
+  deckId    String
+  
+  @@unique([sessionId, deckId])
+}
