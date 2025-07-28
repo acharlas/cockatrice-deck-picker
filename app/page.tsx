@@ -1,16 +1,51 @@
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Shuffle, History, Settings } from "lucide-react";
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Shuffle, History, Settings, Lock } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+
+const ADMIN_PASSWORD = "deck-master-2024"
 
 export default function HomePage() {
+  const [password, setPassword] = useState("")
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (password === ADMIN_PASSWORD) {
+      toast({
+        title: "Access Granted",
+        description: "Redirecting to admin panel...",
+        variant: "success",
+      })
+      router.push(`/admin/decks?admin=${ADMIN_PASSWORD}`)
+    } else {
+      toast({
+        title: "Access Denied",
+        description: "Incorrect password. Please try again.",
+        variant: "destructive",
+      })
+      setPassword("")
+    }
+  }
+
   return (
     <div className="container mx-auto p-8">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Deck Assignment System</h1>
         <p className="text-gray-600 text-lg">
-          Assign random decks to players with smart filtering and uniqueness
-          tracking
+          Assign random decks to players with smart filtering and uniqueness tracking
         </p>
       </div>
 
@@ -24,8 +59,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600 mb-4">
-              Select players and filters, then randomly assign decks with
-              uniqueness tracking.
+              Select players and filters, then randomly assign decks with uniqueness tracking.
             </p>
             <Button asChild className="w-full">
               <Link href="/assign">Start Assignment</Link>
@@ -41,10 +75,7 @@ export default function HomePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4">
-              See past assignments and reset the uniqueness tracking when
-              needed.
-            </p>
+            <p className="text-gray-600 mb-4">See past assignments and reset the uniqueness tracking when needed.</p>
             <Button asChild variant="outline" className="w-full bg-transparent">
               <Link href="/history">View History</Link>
             </Button>
@@ -59,12 +90,46 @@ export default function HomePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4">
-              Admin interface to create, edit, and manage the deck library.
-            </p>
-            <Button asChild variant="outline" className="w-full bg-transparent">
-              <Link href="/admin/decks">Admin Panel</Link>
-            </Button>
+            <p className="text-gray-600 mb-4">Admin interface to create, edit, and manage the deck library.</p>
+
+            {!showPasswordForm ? (
+              <Button variant="outline" className="w-full bg-transparent" onClick={() => setShowPasswordForm(true)}>
+                <Lock className="w-4 h-4 mr-2" />
+                Access Admin Panel
+              </Button>
+            ) : (
+              <form onSubmit={handlePasswordSubmit} className="space-y-3">
+                <div>
+                  <Label htmlFor="password" className="text-sm">
+                    Admin Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter admin password"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" className="flex-1">
+                    Access
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setPassword("")
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -76,5 +141,5 @@ export default function HomePage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

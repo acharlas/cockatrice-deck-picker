@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { RotateCcw, Home } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 interface HistoryEntry {
   id: string
   gameId: string
   playerName: string
   deckName: string
+  commander?: string
   assignedAt: string
 }
 
@@ -24,6 +26,7 @@ export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [groupedHistory, setGroupedHistory] = useState<{ [key: string]: GameGroup }>({})
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchHistory()
@@ -53,11 +56,19 @@ export default function HistoryPage() {
 
       if (response.ok) {
         fetchHistory()
-        alert("History reset successfully!")
+        toast({
+          title: "Success",
+          description: "History reset successfully!",
+          variant: "success",
+        })
       }
     } catch (error) {
       console.error("Failed to reset history:", error)
-      alert("Failed to reset history")
+      toast({
+        title: "Error",
+        description: "Failed to reset history. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -126,25 +137,30 @@ export default function HistoryPage() {
             Total games: {Object.keys(groupedHistory).length} | Total assignments: {history.length}
           </div>
 
-          {Object.entries(groupedHistory).map(([gameId, gameData]) => (
-            <Card key={gameId}>
-              <CardContent className="p-4">
-                <div className="font-semibold text-lg mb-3">
-                  Game {gameId} - {new Date(gameData.assignedAt).toLocaleString()}
-                </div>
-                <div className="grid gap-2">
-                  {gameData.assignments.map((entry) => (
-                    <div key={entry.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <div>
-                        <span className="font-medium">{entry.playerName}</span>
-                        <span className="text-gray-600 ml-2">{entry.deckName}</span>
+          {Object.entries(groupedHistory)
+            .sort(([, a], [, b]) => b.assignments.length - a.assignments.length)
+            .map(([gameId, gameData]) => (
+              <Card key={gameId}>
+                <CardContent className="p-4">
+                  <div className="font-semibold text-lg mb-3">
+                    Game {gameId} - {new Date(gameData.assignedAt).toLocaleString()}
+                  </div>
+                  <div className="grid gap-2">
+                    {gameData.assignments.map((entry) => (
+                      <div key={entry.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div>
+                          <span className="font-medium">{entry.playerName}</span>
+                          <span className="text-gray-600 ml-2">{entry.deckName}</span>
+                          {entry.commander && (
+                            <span className="text-gray-500 ml-2">(Commander: {entry.commander})</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
         </div>
       )}
     </div>

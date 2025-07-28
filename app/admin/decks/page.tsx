@@ -11,12 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trash2, Edit, Plus, Download, Home } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 interface Deck {
   id: string
   name: string
   bracket: number
   colors: string[]
+  commander?: string
   deckList?: string
   createdAt: string
 }
@@ -34,8 +36,10 @@ export default function AdminDecks() {
     name: "",
     bracket: 1,
     colors: [] as string[],
+    commander: "",
     deckList: "",
   })
+  const { toast } = useToast()
 
   const isAuthorized = searchParams.get("admin") === ADMIN_SECRET
 
@@ -71,12 +75,20 @@ export default function AdminDecks() {
       })
 
       if (response.ok) {
-        console.log(`${editingDeck ? "Updated" : "Created"} deck:`, formData)
+        toast({
+          title: "Success",
+          description: `Deck "${formData.name}" ${editingDeck ? "updated" : "created"} successfully!`,
+          variant: "success",
+        })
         fetchDecks()
         resetForm()
       }
     } catch (error) {
-      console.error("Failed to save deck:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save deck. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -89,11 +101,19 @@ export default function AdminDecks() {
       })
 
       if (response.ok) {
-        console.log("Deleted deck:", deck)
+        toast({
+          title: "Success",
+          description: `Deck "${deck.name}" deleted successfully!`,
+          variant: "success",
+        })
         fetchDecks()
       }
     } catch (error) {
-      console.error("Failed to delete deck:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete deck. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -103,6 +123,7 @@ export default function AdminDecks() {
       name: deck.name,
       bracket: deck.bracket,
       colors: deck.colors,
+      commander: deck.commander || "",
       deckList: deck.deckList || "",
     })
     setShowForm(true)
@@ -111,7 +132,7 @@ export default function AdminDecks() {
   const resetForm = () => {
     setEditingDeck(null)
     setShowForm(false)
-    setFormData({ name: "", bracket: 1, colors: [], deckList: "" })
+    setFormData({ name: "", bracket: 1, colors: [], commander: "", deckList: "" })
   }
 
   const handleColorToggle = (color: string) => {
@@ -226,6 +247,16 @@ export default function AdminDecks() {
               </div>
 
               <div>
+                <Label htmlFor="commander">Commander</Label>
+                <Input
+                  id="commander"
+                  value={formData.commander}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, commander: e.target.value }))}
+                  placeholder="Enter commander name..."
+                />
+              </div>
+
+              <div>
                 <Label htmlFor="deckList">Deck List</Label>
                 <textarea
                   id="deckList"
@@ -258,6 +289,7 @@ export default function AdminDecks() {
                   <h3 className="font-semibold text-lg">{deck.name}</h3>
                   <div className="flex items-center gap-4 mt-2">
                     <span className="text-sm">Bracket: {deck.bracket}</span>
+                    {deck.commander && <span className="text-sm">Commander: {deck.commander}</span>}
                     <div className="flex gap-1">
                       {deck.colors.map((color) => (
                         <Badge key={color} variant="secondary" className="text-xs">

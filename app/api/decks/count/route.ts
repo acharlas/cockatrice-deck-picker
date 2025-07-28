@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const bracket = searchParams.get("bracket")
     const colors = searchParams.get("colors")
+    const commanders = searchParams.get("commanders")
 
     const where: any = {}
 
@@ -13,17 +14,26 @@ export async function GET(request: NextRequest) {
       where.bracket = Number.parseInt(bracket)
     }
 
+    let decks = await prisma.deck.findMany({ where })
+
+    // Filter by colors (if any player has color preferences)
     if (colors) {
       const colorArray = colors.split(",")
-      // For SQLite, we need to use string operations to check JSON array
-      where.colors = {
-        contains: colorArray[0], // Simplified - in production you'd want better JSON querying
-      }
+      decks = decks.filter((deck) => {
+        const deckColors = JSON.parse(deck.colors)
+        return colorArray.some((color) => deckColors.includes(color))
+      })
     }
 
-    const count = await prisma.deck.count({ where })
+    // Filter by commanders (if any player has commander preferences)
+    if (commanders) {
+      const commanderArray = commanders.split(",")
+      decks = decks.filter((deck) => {
+        return commanderArray.includes(deck.commander)
+      })
+    }
 
-    return NextResponse.json({ count })
+    return NextResponse.json({ count: decks.length })
   } catch (error) {
     console.error("Failed to count decks:", error)
     return NextResponse.json({ error: "Failed to count decks" }, { status: 500 })

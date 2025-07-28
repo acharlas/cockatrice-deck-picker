@@ -12,6 +12,7 @@ model Deck {
   name      String
   bracket   Int
   colors    String   // JSON string array
+  commander String   @default("") // Commander name
   deckList  String   @default("") // Plain text deck list
   createdAt DateTime @default(now())
 }
@@ -23,6 +24,7 @@ model AssignmentHistory {
   playerName String
   deckId     String
   deckName   String
+  commander  String   @default("") // Commander assigned
   assignedAt DateTime @default(now())
 }
 

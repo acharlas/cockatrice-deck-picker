@@ -1,93 +1,56 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
-import { shuffle } from "lodash"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export async function POST(request: NextRequest) {
+export async function GET() {
   try {
-    const { players, bracket, colors } = await request.json()
+    const decks = await prisma.deck.findMany({
+      select: {
+        commander: true,
+        deckList: true,
+      },
+    });
 
-    // Generate a simple session ID and game ID
-    const sessionId = request.headers.get("x-forwarded-for") || "default-session"
-    const gameId = Date.now().toString() // Simple game ID based on timestamp
+    const commandersSet = new Set<string>();
 
-    // Build query filters
-    const where: any = {}
-    if (bracket) where.bracket = bracket
-
-    // Get all decks matching filters
-    let availableDecks = await prisma.deck.findMany({ where })
-
-    // Filter by colors if specified
-    if (colors && colors.length > 0) {
-      availableDecks = availableDecks.filter((deck) => {
-        const deckColors = JSON.parse(deck.colors)
-        return colors.some((color: string) => deckColors.includes(color))
-      })
-    }
-
-    // Get already used decks for this session
-    const usedDecks = await prisma.usedDeck.findMany({
-      where: { sessionId },
-    })
-    const usedDeckIds = new Set(usedDecks.map((ud) => ud.deckId))
-
-    // Filter out used decks
-    const unusedDecks = availableDecks.filter((deck) => !usedDeckIds.has(deck.id))
-
-    // If not enough unused decks, return error
-    if (unusedDecks.length < players.length) {
-      return NextResponse.json({ error: "Not enough unused decks available. Try resetting history." }, { status: 400 })
-    }
-
-    // Shuffle and take required number
-    const shuffledDecks = shuffle(unusedDecks)
-    const selectedDecks = shuffledDecks.slice(0, players.length)
-
-    // Create assignment
-    const assignment: { [key: string]: any } = {}
-    const historyEntries = []
-
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i]
-      const deck = selectedDecks[i]
-
-      assignment[player] = {
-        ...deck,
-        colors: JSON.parse(deck.colors),
+    decks.forEach((deck) => {
+      // Add default commander if it exists
+      if (deck.commander && deck.commander.trim()) {
+        commandersSet.add(deck.commander.trim());
       }
 
-      historyEntries.push({
-        sessionId,
-        gameId,
-        playerName: player,
-        deckId: deck.id,
-        deckName: deck.name,
-      })
+      // Parse deck list for additional commanders
+      if (deck.deckList) {
+        const lines = deck.deckList.split("\n");
+        lines.forEach((line) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
 
-      // Create or update used deck entry individually to handle duplicates
-      await prisma.usedDeck.upsert({
-        where: {
-          sessionId_deckId: {
-            sessionId,
-            deckId: deck.id,
-          },
-        },
-        update: {},
-        create: {
-          sessionId,
-          deckId: deck.id,
-        },
-      })
-    }
+          // Look for lines that start with "1 " (typical commander format)
+          const commanderMatch = trimmed.match(/^1\s+(.+)$/);
+          if (commanderMatch) {
+            const cardName = commanderMatch[1].trim();
+            // Filter out basic lands and common non-commander cards
+            if (
+              !cardName.match(/^(Plains|Island|Swamp|Mountain|Forest)$/i) &&
+              !cardName.match(
+                /^(Sol Ring|Command Tower|Arcane Signet|Lightning Greaves|Swiftfoot Boots)$/i
+              )
+            ) {
+              commandersSet.add(cardName);
+            }
+          }
+        });
+      }
+    });
 
-    // Save assignment history
-    await prisma.assignmentHistory.createMany({
-      data: historyEntries,
-    })
+    const commanders = Array.from(commandersSet).sort();
 
-    return NextResponse.json({ assignment })
+    return NextResponse.json({ commanders });
   } catch (error) {
-    console.error("Assignment failed:", error)
-    return NextResponse.json({ error: "Assignment failed" }, { status: 500 })
+    console.error("Failed to fetch commanders:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch commanders" },
+      { status: 500 }
+    );
   }
 }

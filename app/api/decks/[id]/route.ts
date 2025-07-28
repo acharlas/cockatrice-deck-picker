@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { name, bracket, colors, deckList } = await request.json()
+    const { name, bracket, colors, commander, deckList } = await request.json()
 
     const deck = await prisma.deck.update({
       where: { id: params.id },
@@ -11,6 +11,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         name,
         bracket,
         colors: JSON.stringify(colors),
+        commander: commander || "",
         deckList: deckList || "",
       },
     })

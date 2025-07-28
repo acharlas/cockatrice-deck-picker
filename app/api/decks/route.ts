@@ -10,6 +10,7 @@ export async function GET() {
     const formattedDecks = decks.map((deck) => ({
       ...deck,
       colors: JSON.parse(deck.colors),
+      commander: deck.commander || "",
       deckList: deck.deckList || "",
     }))
 
@@ -22,13 +23,14 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, bracket, colors, deckList } = await request.json()
+    const { name, bracket, colors, commander, deckList } = await request.json()
 
     const deck = await prisma.deck.create({
       data: {
         name,
         bracket,
         colors: JSON.stringify(colors),
+        commander: commander || "",
         deckList: deckList || "",
       },
     })
