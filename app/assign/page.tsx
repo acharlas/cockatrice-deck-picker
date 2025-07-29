@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PLAYERS } from "@/lib/players";
+import { COLOR_OPTIONS, BRACKET_OPTIONS } from "@/lib/constants";
 import { Shuffle, Home, Copy, RefreshCw, Search, X } from "lucide-react";
 import Link from "next/link";
 
@@ -29,6 +30,7 @@ interface Deck {
 interface Assignment {
   [playerName: string]: {
     deck: Deck;
+    pool: Deck[];
   };
 }
 
@@ -38,8 +40,6 @@ interface PlayerPreferences {
     commander: string;
   };
 }
-
-const COLOR_OPTIONS = ["White", "Blue", "Black", "Red", "Green", "Colorless"];
 
 export default function AssignPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>(PLAYERS);
@@ -57,6 +57,7 @@ export default function AssignPage() {
       return initial;
     }
   );
+  const [playerCounts, setPlayerCounts] = useState<{ [player: string]: number }>({});
   const [matchingCount, setMatchingCount] = useState(0);
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,27 +85,36 @@ export default function AssignPage() {
 
   const updateMatchingCount = async () => {
     try {
-      const params = new URLSearchParams();
-      if (bracketFilter) params.append("bracket", bracketFilter.toString());
+      const countPromises = selectedPlayers.map(async (player) => {
+        const params = new URLSearchParams();
+        if (bracketFilter) params.append("bracket", bracketFilter.toString());
 
-      // For count, we need to consider each player's exact color combination
-      // This is a simplified approach - in reality, the count might be higher
-      // since different players might have different exact combinations
-      const allColors = new Set<string>();
-      selectedPlayers.forEach((player) => {
-        playerPreferences[player].colors.forEach((color) =>
-          allColors.add(color)
-        );
+        const prefs = playerPreferences[player];
+        if (prefs.colors.length > 0) {
+          params.append("colors", prefs.colors.join(","));
+        }
+        if (prefs.commander && prefs.commander !== "Any commander") {
+          params.append("commander", prefs.commander);
+        }
+
+        const response = await fetch(`/api/decks/count?${params}`);
+        const data = await response.json();
+        return data.count || 0;
       });
-      if (allColors.size > 0)
-        params.append("colors", Array.from(allColors).join(","));
 
-      const response = await fetch(`/api/decks/count?${params}`);
-      const data = await response.json();
-      setMatchingCount(data.count);
+      const counts = await Promise.all(countPromises);
+      const countMap: { [player: string]: number } = {};
+      selectedPlayers.forEach((player, idx) => {
+        countMap[player] = counts[idx];
+      });
+      setPlayerCounts(countMap);
+
+      const total = counts.reduce((sum, c) => sum + c, 0);
+      setMatchingCount(total);
     } catch (error) {
       console.error("Failed to get deck count:", error);
       setMatchingCount(0);
+      setPlayerCounts({});
     }
   };
 
@@ -180,7 +190,14 @@ export default function AssignPage() {
 
       const data = await response.json();
       if (response.ok) {
-        setAssignment(data.assignment);
+        const combined: Assignment = {} as Assignment;
+        Object.keys(data.assignment).forEach((player) => {
+          combined[player] = {
+            deck: data.assignment[player].deck,
+            pool: data.pools[player] || [],
+          };
+        });
+        setAssignment(combined);
         alert(
           `Successfully assigned decks to ${selectedPlayers.length} players! You can shuffle individual decks before finalizing.`
         );
@@ -214,12 +231,14 @@ export default function AssignPage() {
 
       const data = await response.json();
       if (response.ok) {
-        setAssignment((prev) => ({
-          ...prev!,
-          [player]: {
+        setAssignment((prev) => {
+          const updated = { ...prev! };
+          updated[player] = {
             deck: data.deck,
-          },
-        }));
+            pool: data.pool,
+          };
+          return updated;
+        });
         alert(`${player} got a new deck: ${data.deck.name}`);
       } else {
         alert(data.error || "No other decks available for this player.");
@@ -274,13 +293,14 @@ export default function AssignPage() {
   };
 
   const canAssign =
-    selectedPlayers.length > 0 && matchingCount >= selectedPlayers.length;
+    selectedPlayers.length > 0 &&
+    Object.values(playerCounts).every((c) => c > 0);
 
   // Helper function to get color combination display
   const getColorCombinationText = (colors: string[]) => {
     if (colors.length === 0) return "any color combination";
     if (colors.length === 1) return `mono-${colors[0].toLowerCase()}`;
-    return `exactly ${colors.sort().join(" + ")}`;
+    return `exactly ${[...colors].sort().join(" + ")}`;
   };
 
   return (
@@ -318,7 +338,7 @@ export default function AssignPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="0">Any bracket</SelectItem>
-                    {[1, 2, 3, 4, 5].map((bracket) => (
+                    {BRACKET_OPTIONS.map((bracket) => (
                       <SelectItem key={bracket} value={bracket.toString()}>
                         Bracket {bracket}
                       </SelectItem>
@@ -480,8 +500,11 @@ export default function AssignPage() {
                               </Button>
                             )}
                         </div>
-                      </div>
+                      <p className="text-xs text-gray-600">
+                        {(playerCounts[player] ?? 0)} decks available
+                      </p>
                     </div>
+                  </div>
                   )}
                 </div>
               ))}
@@ -616,7 +639,10 @@ export default function AssignPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleShufflePlayer(player)}
-                        disabled={shufflingPlayer === player}
+                        disabled={
+                          shufflingPlayer === player ||
+                          (assignment && assignment[player].pool.length === 0)
+                        }
                       >
                         <RefreshCw
                           className={`w-4 h-4 mr-2 ${

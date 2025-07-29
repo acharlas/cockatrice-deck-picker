@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Shuffle, History, Settings, Lock } from "lucide-react"
-
-const ADMIN_PASSWORD = "deck-master-2024"
+import { ADMIN_SECRET } from "@/lib/constants"
 
 export default function HomePage() {
   const [password, setPassword] = useState("")
@@ -21,9 +20,9 @@ export default function HomePage() {
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (password === ADMIN_PASSWORD) {
+    if (password === ADMIN_SECRET) {
       alert("Access granted! Redirecting to admin panel...")
-      router.push(`/admin/decks?admin=${ADMIN_PASSWORD}`)
+      router.push(`/admin/decks?admin=${ADMIN_SECRET}`)
     } else {
       alert("Incorrect password. Please try again.")
       setPassword("")

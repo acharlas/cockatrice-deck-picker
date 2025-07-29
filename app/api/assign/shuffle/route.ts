@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shuffle } from "lodash";
+import { colorsMatch, filterDecks, DeckPreferences } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,54 +40,12 @@ export async function POST(request: NextRequest) {
         .map(([, data]: [string, any]) => data.deck.id)
     );
 
-    // Remove the current deck and other currently assigned decks from options
-    let playerDecks = unusedDecks.filter(
-      (deck) => deck.id !== currentDeckId && !currentlyAssignedIds.has(deck.id)
+    const prefs: DeckPreferences = playerPreferences;
+    let playerDecks = filterDecks(unusedDecks, prefs);
+
+    playerDecks = playerDecks.filter(
+      (deck) => deck.id !== currentDeckId && !currentlyAssignedIds.has(deck.id),
     );
-
-    // Apply player's color preferences (EXCLUSIVE matching)
-    if (playerPreferences && playerPreferences.colors.length > 0) {
-      const colorFilteredDecks = playerDecks.filter((deck) => {
-        const deckColors = JSON.parse(deck.colors);
-
-        // Check if deck colors exactly match the preferred colors
-        // Sort both arrays to compare them properly
-        const sortedDeckColors = [...deckColors].sort();
-        const sortedPrefColors = [...playerPreferences.colors].sort();
-        console.log("sortedDeckColors = " + sortedDeckColors);
-        console.log("sortedPrefColors = " + sortedPrefColors);
-
-        return (
-          sortedDeckColors.length === sortedPrefColors.length &&
-          sortedDeckColors.every(
-            (color, index) => color === sortedPrefColors[index]
-          )
-        );
-      });
-
-      // Use color-filtered decks if available, otherwise fall back to all decks
-      if (colorFilteredDecks.length > 0) {
-        playerDecks = colorFilteredDecks;
-      }
-    }
-
-    // Apply player's commander preference
-    if (
-      playerPreferences &&
-      playerPreferences.commander &&
-      playerPreferences.commander !== "Any commander"
-    ) {
-      const commanderFilteredDecks = playerDecks.filter((deck) =>
-        deck.commander
-          .toLowerCase()
-          .includes(playerPreferences.commander.toLowerCase())
-      );
-
-      // Use commander-filtered decks if available, otherwise fall back to color/all decks
-      if (commanderFilteredDecks.length > 0) {
-        playerDecks = commanderFilteredDecks;
-      }
-    }
 
     // If no other decks available, return error
     if (playerDecks.length === 0) {
@@ -96,15 +55,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Randomly select a new deck
     const selectedDeck = shuffle(playerDecks)[0];
 
-    // NOTE: We don't update used deck records here - only when finalized
+    const remaining = playerDecks
+      .filter((d) => d.id !== selectedDeck.id)
+      .map((d) => ({ ...d, colors: JSON.parse(d.colors) }));
+
     return NextResponse.json({
       deck: {
         ...selectedDeck,
         colors: JSON.parse(selectedDeck.colors),
       },
+      pool: remaining,
     });
   } catch (error) {
     console.error("Shuffle failed:", error);

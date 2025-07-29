@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trash2, Edit, Plus, Download, Home } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { COLOR_OPTIONS, BRACKET_OPTIONS, ADMIN_SECRET } from "@/lib/constants"
 
 interface Deck {
   id: string
@@ -21,10 +22,6 @@ interface Deck {
   deckList?: string
   createdAt: string
 }
-
-const ADMIN_SECRET = "deck-master-2024"
-const COLOR_OPTIONS = ["White", "Blue", "Black", "Red", "Green", "Colorless"]
-const BRACKET_OPTIONS = [1, 2, 3, 4, 5]
 
 export default function AdminDecks() {
   const searchParams = useSearchParams()
